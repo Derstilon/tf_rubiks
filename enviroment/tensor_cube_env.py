@@ -1,6 +1,5 @@
-import cube
+from enviroment import cube
 import tensorflow as tf
-from enum import Enum
     
 cube_move_dict = {
     0 : 'f',

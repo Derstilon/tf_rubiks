@@ -1,4 +1,4 @@
-from tensor_cube_env import TensorCubeEnv
+from enviroment.tensor_cube_env import TensorCubeEnv
 
 env = TensorCubeEnv()
 print(env.getTensor())
