@@ -129,23 +129,23 @@ class Cube:
     # and still has O(n^2) runtime. Wanted to try something cool.
     def __rotateFace(self,face='Front',dir='ClkWise',iter=1):
         # Choose the right face for the job
-        if   face is 'Front' : tempFace = self.front
-        elif face is 'Up'    : tempFace = self.up
-        elif face is 'Down'  : tempFace = self.down
-        elif face is 'Left'  : tempFace = self.left
-        elif face is 'Right' : tempFace = self.right
-        elif face is 'Back'  : tempFace = self.back
+        if   face == 'Front' : tempFace = self.front
+        elif face == 'Up'    : tempFace = self.up
+        elif face == 'Down'  : tempFace = self.down
+        elif face == 'Left'  : tempFace = self.left
+        elif face == 'Right' : tempFace = self.right
+        elif face == 'Back'  : tempFace = self.back
         else : print("ERROR")
 
         # Here is where the rotation algorithm happens
         # I could have made a simple one, but this was
         # much cooler to implement.
         N = self.order - 1
-        if   dir is 'ClkWise'    :
+        if   dir == 'ClkWise'    :
             transformForward = lambda x,y: (-y, x)
             transformUpdate  = lambda n,s: (n - 2*s, 0)
             transformSkew    = lambda x,y: (x-1, y-1)
-        elif dir is 'CntrClkWise':
+        elif dir == 'CntrClkWise':
             transformForward = lambda x,y: (y, -x)
             transformUpdate  = lambda n,s: (0, n - 2*s)
             transformSkew    = lambda x,y: (x+1, y-1)
@@ -176,7 +176,7 @@ class Cube:
             forward='CntrClkWise'
             backward='ClkWise'
 
-        if axis is 'z':
+        if axis == 'z':
             self.__rotateFace(face='Front', dir=forward)
             self.__rotateFace(face='Back', dir=backward)
             self.__rotateFace(face='Up',    dir=forward)
@@ -196,7 +196,7 @@ class Cube:
                 self.left = self.up[:]
                 self.up = tempFace[:]
 
-        elif axis is 'y':
+        elif axis == 'y':
             self.__rotateFace(face='Up',   dir=forward)
             self.__rotateFace(face='Down',dir=backward)
             if not inverse:
@@ -212,7 +212,7 @@ class Cube:
                 self.front =  self.left[:]
                 self.left  =   tempFace[:]
 
-        elif axis is 'x':
+        elif axis == 'x':
             self.__rotateFace(face='Back',  dir='ClkWise', iter=2)
             self.__rotateFace(face='Left',  dir=backward, iter=1)
             self.__rotateFace(face='Right',  dir=forward, iter=1)
@@ -295,27 +295,27 @@ class Cube:
             self.__rotateFace(face=face,
                               dir=('ClkWise' if not inverse else 'CntrClkWise'))
 
-        if face is "Front":
+        if face == "Front":
             self.__resolveLayersOnlyFront(layer, inverse)
-        elif face is "Back":
+        elif face == "Back":
             self.rotateAlongAxis(axis='y')
             self.rotateAlongAxis(axis='y')
             self.__resolveLayersOnlyFront(layer, inverse)
             self.rotateAlongAxis(axis='y')
             self.rotateAlongAxis(axis='y')
-        elif face is "Right":
+        elif face == "Right":
             self.rotateAlongAxis(axis='y')
             self.__resolveLayersOnlyFront(layer, inverse)
             self.rotateAlongAxis(axis='y', inverse=True)
-        elif face is "Left":
+        elif face == "Left":
             self.rotateAlongAxis(axis='y', inverse=True)
             self.__resolveLayersOnlyFront(layer, inverse)
             self.rotateAlongAxis(axis='y')
-        elif face is "Up":
+        elif face == "Up":
             self.rotateAlongAxis(axis='x', inverse=True)
             self.__resolveLayersOnlyFront(layer, inverse)
             self.rotateAlongAxis(axis='x')
-        elif face is "Down":
+        elif face == "Down":
             self.rotateAlongAxis(axis='x')
             self.__resolveLayersOnlyFront(layer, inverse)
             self.rotateAlongAxis(axis='x', inverse=True)
@@ -330,7 +330,7 @@ class Cube:
         inv = False
         lay = 0
         for command in cmdString:
-            if command is '.':
+            if command == '.':
                 inv = not inv
             elif command.isdigit():
                 lay = min(max(int(command)-1,0),self.order - 1)
