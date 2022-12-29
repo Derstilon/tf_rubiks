@@ -11,6 +11,6 @@ def build_basic_scrambler(n=6):
 
     # Output layer
     model.add(Dense(13*n))
-    model.add(Reshape((13, n)))
+    model.add(Reshape((n, 13)))
 
     return model
