@@ -40,18 +40,19 @@ class TensorCubeEnv():
     def getTensor(self):
         values = [tile_color_dict[i] for i in self.cube.constructVectorState()]
         # reshape to 3x3x6 tensor
-        return tf.reshape(values, [6, self.orderNum, self.orderNum])
+        return tf.reshape(values, (1, 6, self.orderNum, self.orderNum))
 
     def getLoss(self):
         tensor = self.getTensor()
         # count the number of tiles that are different from the solved state
         values = tf.math.count_nonzero(tf.math.not_equal(tensor, self.solved_tensor)).numpy()
         # normalize the loss
-        return values / (6 * (self.orderNum ** 2 - 1))
+        return tf.constant(values / (6 * (self.orderNum ** 2 - 1)))
 
-    def render(self):
-        self.cube.displayCube(isColor=False)
+    def render(self, isColor=True):
+        self.cube.displayCube(isColor=isColor)
 
-    def performMoves(self, moves_list):
+    def performMoves(self, moves_tensor):
+        moves_list = tf.math.argmax(moves_tensor, 2).numpy()[0]
         for move in moves_list:
             self.cube.minimalInterpreter(cube_move_dict[move])
