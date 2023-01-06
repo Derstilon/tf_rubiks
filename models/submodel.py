@@ -16,32 +16,43 @@ class CubeGAN(Model):
         self.scrambler = scrambler
         self.solver = solver
         self.cube_env = TensorCubeEnv()
-        
+
     def print(self, loss):
         scrambler_loss = 1 - loss
         solver_loss = loss
         message = f'scrambler_loss: {scrambler_loss}, solver_loss: {solver_loss}'
         print(message)
         return message
-    
+
     def train_step(self, DEBUG=False):
 
         self.cube_env.reset()
+
         with tf.GradientTape() as scrambler_tape:
             random_moves = self.scrambler(np.random.rand(1, 10))
             self.cube_env.performMoves(random_moves)
 
         tensor = self.cube_env.getTensor()
 
+        solve_moves = self.solver(tensor)
+        self.cube_env.performMoves(solve_moves)
+
+        scrambler_loss = 1 - self.cube_env.getLoss()
+
+        random_moves = self.scrambler(np.random.rand(1, 10))
+        self.cube_env.performMoves(random_moves)
+
+        tensor = self.cube_env.getTensor()
+
         with tf.GradientTape() as solver_tape:
             solve_moves = self.solver(tensor)
-            self.cube_env.performMoves(random_moves)
+            self.cube_env.performMoves(solve_moves)
 
-        total_loss = self.cube_env.getLoss()
+        solver_loss = self.cube_env.getLoss()
 
         # Apply backpropagation
-        scrambler_gradient = scrambler_tape.gradient(1 - total_loss, self.scrambler.trainable_variables)
-        solver_gradient = solver_tape.gradient(total_loss, self.solver.trainable_variables)
+        scrambler_gradient = scrambler_tape.gradient(scrambler_loss, self.scrambler.trainable_variables)
+        solver_gradient = solver_tape.gradient(solver_loss, self.solver.trainable_variables)
 
         opt = tf.keras.optimizers.experimental.SGD(learning_rate=0.1)
         try:
@@ -51,14 +62,16 @@ class CubeGAN(Model):
             if DEBUG:
                 print("Gradient error, please fix this. @Petros9")
         if DEBUG:
-            self.print(total_loss.numpy())
-        return (total_loss.numpy(), 1- total_loss.numpy())
+            self.print(scrambler_loss.numpy())
+        return (solver_loss.numpy(), scrambler_loss.numpy())
+
 
 def build_basic_cubeGAN():
     solver = build_basic_solver()
     scrambler = build_basic_scrambler()
     cubeGAN = CubeGAN(scrambler, solver)
     return cubeGAN
+
 
 if __name__ == "__main__":
 
