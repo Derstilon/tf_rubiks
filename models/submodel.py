@@ -2,81 +2,81 @@ from tensorflow.python.keras.models import Model
 import tensorflow as tf
 from enviroment.tensor_cube_env import TensorCubeEnv
 from models.solvers import build_basic_solver
-from models.scramblers import build_basic_scrambler
+from tensorflow.python.keras.losses import BinaryCrossentropy
+from tensorflow.python.keras.optimizers import adam_v2
 import numpy as np
+from random import random
+from progress.bar import Bar
+from matplotlib import pyplot as plt
 
 
 class CubeGAN(Model):
-    def __init__(self, scrambler, solver, *args, **kwargs):
+    def __init__(self, solver, learning_rate=0.00001, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.d_loss = None
-        self.g_loss = None
-        self.d_opt = None
-        self.g_opt = None
-        self.scrambler = scrambler
+        self.loss = BinaryCrossentropy(from_logits=True)
+        self.opt = adam_v2.Adam(learning_rate=learning_rate)
         self.solver = solver
         self.cube_env = TensorCubeEnv()
+        self.cube_env.reset()
 
-    def print(self, loss):
-        scrambler_loss = 1 - loss
+    def print(self, loss): # ????
         solver_loss = loss
-        message = f'scrambler_loss: {scrambler_loss}, solver_loss: {solver_loss}'
+        message = f'solver_loss: {solver_loss}'
         print(message)
         return message
 
     def train_step(self, DEBUG=False):
+        random_move = self.cube_env.get_random_move()
 
-        self.cube_env.reset()
+        # Randomly reset the env. The cube will get scrambled by the training steps and 
+        # sometimes randomly reset to expose the model to low scrable scenarios.
+        if random() > 0.95:
+            self.cube_env.reset()
 
-        with tf.GradientTape() as scrambler_tape:
-            random_moves = self.scrambler(np.random.rand(1, 10))
-            self.cube_env.performMoves(random_moves)
+            # Sometimes skip the move to teach the solver that the cube is solved.
+            if random() > 0.91:
+                # No move
+                random_move = tf.one_hot(12, 13, dtype=tf.dtypes.float32)
 
-        tensor = self.cube_env.getTensor()
+        
+        self.cube_env.perform_move(random_move)
+        expected_move = self.cube_env.get_oposite_move(random_move)
 
-        solve_moves = self.solver(tensor)
-        self.cube_env.performMoves(solve_moves)
-
-        scrambler_loss = 1 - self.cube_env.getLoss()
-
-        random_moves = self.scrambler(np.random.rand(1, 10))
-        self.cube_env.performMoves(random_moves)
-
-        tensor = self.cube_env.getTensor()
+        cube_tensor = self.cube_env.get_tensor()
 
         with tf.GradientTape() as solver_tape:
-            solve_moves = self.solver(tensor)
-            self.cube_env.performMoves(solve_moves)
+            solve_move = self.solver(cube_tensor)
 
-        solver_loss = self.cube_env.getLoss()
+            solver_loss = self.loss(expected_move, solve_move)
 
         # Apply backpropagation
-        scrambler_gradient = scrambler_tape.gradient(scrambler_loss, self.scrambler.trainable_variables)
         solver_gradient = solver_tape.gradient(solver_loss, self.solver.trainable_variables)
+        self.opt.apply_gradients(zip(solver_gradient, self.solver.trainable_variables))
 
-        opt = tf.keras.optimizers.experimental.SGD(learning_rate=0.1)
-        try:
-            opt.apply_gradients(zip(scrambler_gradient, self.scrambler.trainable_variables))
-            opt.apply_gradients(zip(solver_gradient, self.solver.trainable_variables))
-        except(Exception):
-            if DEBUG:
-                print("Gradient error, please fix this. @Petros9")
-        if DEBUG:
-            self.print(scrambler_loss.numpy())
-        return (solver_loss.numpy(), scrambler_loss.numpy())
+        return solver_loss.numpy(), tf.argmax(expected_move, axis=1).numpy()[0] == tf.argmax(solve_move, axis=1).numpy()[0]
 
-
-def build_basic_cubeGAN():
-    solver = build_basic_solver()
-    scrambler = build_basic_scrambler()
-    cubeGAN = CubeGAN(scrambler, solver)
-    return cubeGAN
 
 
 if __name__ == "__main__":
+    EPOCHS = 20000
+    PRINT_N = 100
+
+    bar = Bar('Training', max=EPOCHS)
 
     solver = build_basic_solver()
-    scrambler = build_basic_scrambler()
-    cubeGAN = CubeGAN(scrambler, solver)
-    for i in range(100):
-        cubeGAN.train_step(DEBUG=True)
+    cubeGAN = CubeGAN(solver)
+
+    losses = []
+
+    for i in range(EPOCHS):
+        loss, accurate_pred = cubeGAN.train_step(DEBUG=True)
+        if i%PRINT_N == 0:
+            losses.append(loss)
+        bar.next()
+
+    plt.plot(losses)
+    plt.grid()
+    plt.xlabel(f'Epoch (every {PRINT_N}th)')
+    plt.ylabel('Loss')
+
+    plt.savefig('result.png')

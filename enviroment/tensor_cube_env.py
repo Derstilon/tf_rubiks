@@ -1,5 +1,7 @@
 from enviroment import cube
+from random import randint
 import tensorflow as tf
+
 
 cube_move_dict = {
     0: 'f',
@@ -37,13 +39,13 @@ class TensorCubeEnv():
     def reset(self):
         self.cube = cube.Cube(order=self.orderNum)
 
-    def getTensor(self):
+    def get_tensor(self):
         values = [tile_color_dict[i] for i in self.cube.constructVectorState()]
         # reshape to 3x3x6 tensor
         return tf.reshape(values, (1, 6, self.orderNum, self.orderNum))
 
-    def getLoss(self):
-        tensor = self.getTensor()
+    def get_loss(self):
+        tensor = self.get_tensor()
         # count the number of tiles that are different from the solved state
         values = tf.math.count_nonzero(tf.math.not_equal(tensor, self.solved_tensor)).numpy()
         # normalize the loss
@@ -52,7 +54,22 @@ class TensorCubeEnv():
     def render(self, isColor=True):
         self.cube.displayCube(isColor=isColor)
 
-    def performMoves(self, moves_tensor):
-        moves_list = tf.math.argmax(moves_tensor, 2).numpy()[0]
-        for move in moves_list:
-            self.cube.minimalInterpreter(cube_move_dict[move])
+    def perform_move(self, move_tensor):
+        move = tf.math.argmax(move_tensor).numpy()
+
+        self.cube.minimalInterpreter(cube_move_dict[move])
+
+    def get_random_move(self):
+        return tf.one_hot(randint(0, 11), 13, dtype=tf.dtypes.float32)
+
+    def get_oposite_move(self, move_tensor):
+        # use tensor operations to get the opposite move
+        move = tf.math.argmax(move_tensor).numpy()
+        if(move < 6):
+            move += 6
+        elif(move < 12):
+            move -= 6
+        # generate tensor of opposite move
+        oposite_tensor = tf.one_hot(move, 13, dtype=tf.dtypes.float32)
+
+        return tf.reshape(oposite_tensor, [1,13])
